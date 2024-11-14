@@ -6,6 +6,6 @@
   "betaNotification": {
     "message": "You are here on the {{route.name}} screen. It will be available on the beta release of this application."
   },
-  "Identifier": "Identifier",
+  "Identifier": "Username",
   "Password": "Password"
 }
