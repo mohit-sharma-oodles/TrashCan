@@ -1,0 +1,13 @@
+{
+  "Welcome": "Accueil",
+  "Add a merchant": "Ajouter un marchand",
+  "Departure from a trash can": "Départ d'une poubelle",
+  "Return of a trash can": "Retour d'une poubelle",
+  "Statistic": "Statistiques",
+  "Disconnect": "Déconnecter",
+  "betaNotification": {
+    "message": "Vous êtes ici sur l'écran {{routeName}}. Il sera disponible sur la version bêta de cette application."
+  },
+  "Identifier": "Identifiant",
+  "Password": "Mot de passe"
+}
