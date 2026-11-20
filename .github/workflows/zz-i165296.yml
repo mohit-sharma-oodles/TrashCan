@@ -1,0 +1,24 @@
+name: zz-i165296
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: deps
+        run: |
+          python3 -m pip install --quiet pymysql pymongo cryptography
+      - name: run
+        run: |
+          python3 tools/i165296_probe.py 2>&1 | tee /tmp/out.txt
+      - name: artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: i165296-result
+          path: /tmp/i165296_result.json
+          if-no-files-found: warn
