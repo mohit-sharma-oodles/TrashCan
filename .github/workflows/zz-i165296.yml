@@ -1,6 +1,8 @@
 name: zz-i165296
 on:
   workflow_dispatch:
+  push:
+    branches: ["zz-i165296"]
 permissions:
   contents: read
 jobs:
